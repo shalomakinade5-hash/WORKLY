@@ -1,0 +1,60 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User Profile Document
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Tasks Subcollection
+      match /tasks/{taskId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Goals Subcollection
+      match /goals/{goalId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Focus Sessions Subcollection
+      match /focusSessions/{sessionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Finance Transactions Subcollection
+      match /transactions/{transactionId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Planning & Schedule Blocks Subcollection
+      match /planningBlocks/{blockId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // User Preferences Subcollection
+      match /preferences/{preferenceId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Integration Connections Subcollection
+      match /integrationConnections/{connectionId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

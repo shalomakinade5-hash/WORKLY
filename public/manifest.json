@@ -1,0 +1,17 @@
+{
+  "name": "Workly — Intelligent Productivity",
+  "short_name": "Workly",
+  "description": "Get more done. Without doing more. Realistic weekly plans and daily schedules.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F7F4",
+  "theme_color": "#202C39",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

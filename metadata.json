@@ -1,0 +1,6 @@
+{
+  "name": "Workly",
+  "description": "Get more done. Without doing more. An intelligent productivity platform that transforms tasks, deadlines, and commitments into realistic weekly plans and daily schedules.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
