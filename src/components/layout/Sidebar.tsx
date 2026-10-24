@@ -14,6 +14,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import type { WorklyUser } from '../../services/auth.ts';
+import { PWAInstallButton } from '../pwa/PWAInstallButton.tsx';
 
 export type ActiveView =
   | 'today'
@@ -155,6 +156,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </span>
         </button>
       </nav>
+
+      {/* PWA Install Button */}
+      <div className="py-2">
+        <PWAInstallButton variant="sidebar" />
+      </div>
 
       {/* User Footer Profile */}
       <div className="pt-3 border-t border-[#DCE1E5] flex items-center justify-between px-2">

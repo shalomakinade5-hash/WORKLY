@@ -137,12 +137,14 @@ function findFreeSlots(
  * Generates an array of date strings (YYYY-MM-DD) for a given week start
  */
 export function getDaysOfWeek(startDateStr: string): string[] {
-  const start = new Date(startDateStr);
+  const [year, month, day] = startDateStr.split('-').map(Number);
   const days: string[] = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    days.push(d.toISOString().split('T')[0]);
+    const d = new Date(year, month - 1, day + i);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(d.getDate()).padStart(2, '0');
+    days.push(`${y}-${m}-${dayNum}`);
   }
   return days;
 }

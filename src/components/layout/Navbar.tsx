@@ -2,6 +2,7 @@ import React from 'react';
 import { Menu, Plus, Cloud, CloudOff, Wifi, WifiOff } from 'lucide-react';
 import type { ActiveView } from './Sidebar.tsx';
 import { isFirebaseConfigured } from '../../services/firebase.ts';
+import { PWAInstallButton } from '../pwa/PWAInstallButton.tsx';
 
 interface NavbarProps {
   currentView: ActiveView;
@@ -81,6 +82,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           )}
         </div>
+
+        {/* PWA Install Button */}
+        <PWAInstallButton variant="navbar" />
 
         {/* Quick Add Button */}
         <button

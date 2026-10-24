@@ -21,6 +21,8 @@ import { FinancesView } from './components/views/FinancesView.tsx';
 import { IntegrationsView } from './components/views/IntegrationsView.tsx';
 import { SettingsView } from './components/views/SettingsView.tsx';
 import { SystemTestsView } from './components/views/SystemTestsView.tsx';
+import { OfflineIndicator } from './components/pwa/OfflineIndicator.tsx';
+import { PWAUpdateToast } from './components/pwa/PWAUpdateToast.tsx';
 
 // Services
 import { subscribeToAuth, logOut, type WorklyUser } from './services/auth.ts';
@@ -114,11 +116,6 @@ export default function App() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Register PWA service worker if supported
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
@@ -196,6 +193,8 @@ export default function App() {
 
   // Preference updates
   const handleUpdatePreferences = async (updated: Partial<UserPreferences>) => {
+    // Immediate optimistic state update
+    setPreferences((prev) => ({ ...prev, ...updated }));
     if (!user) return;
     const res = await saveUserPreferences(user.uid, updated);
     setPreferences(res);
@@ -276,6 +275,8 @@ export default function App() {
             showToast('Welcome to Workly!', 'success');
           }}
         />
+        <OfflineIndicator />
+        <PWAUpdateToast />
       </>
     );
   }
@@ -430,15 +431,18 @@ export default function App() {
         isOpen={onboardingOpen}
         initialPreferences={preferences}
         onComplete={async (p) => {
-          await handleUpdatePreferences(p);
           setOnboardingOpen(false);
           showToast('Working baseline configured!', 'success');
+          await handleUpdatePreferences(p);
         }}
         onSkip={() => {
-          handleUpdatePreferences({ onboardingCompleted: true });
           setOnboardingOpen(false);
+          handleUpdatePreferences({ onboardingCompleted: true });
         }}
       />
+
+      <OfflineIndicator />
+      <PWAUpdateToast />
     </AppShell>
   );
 }

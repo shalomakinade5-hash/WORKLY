@@ -62,8 +62,11 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
     return local || defaultPreferences;
   }
   try {
-    const snap = await getDocs(collection(db, `users/${userId}/preferences`));
-    if (!snap.empty) {
+    // 2.5s timeout protection against slow international/mobile connections
+    const fetchPromise = getDocs(collection(db, `users/${userId}/preferences`));
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500));
+    const snap = await Promise.race([fetchPromise, timeoutPromise]);
+    if (snap && !snap.empty) {
       const data = snap.docs[0].data() as UserPreferences;
       setLocalStore(userId, 'preferences', [data]);
       return data;
@@ -75,17 +78,20 @@ export async function getUserPreferences(userId: string): Promise<UserPreference
 }
 
 export async function saveUserPreferences(userId: string, prefs: Partial<UserPreferences>): Promise<UserPreferences> {
-  const existing = await getUserPreferences(userId);
+  // Use locally cached preferences immediately - avoids slow network getDocs
+  const local = getLocalStore<UserPreferences>(userId, 'preferences')[0];
+  const existing = local || defaultPreferences;
   const updated: UserPreferences = { ...existing, ...prefs };
+  
+  // Persist to local storage immediately
   setLocalStore(userId, 'preferences', [updated]);
 
+  // Sync to Firestore non-blocking with error capture
   if (db && isFirebaseConfigured) {
-    try {
-      const docRef = doc(db, `users/${userId}/preferences/main`);
-      await setDoc(docRef, updated, { merge: true });
-    } catch (err) {
+    const docRef = doc(db, `users/${userId}/preferences/main`);
+    setDoc(docRef, updated, { merge: true }).catch((err) => {
       console.warn('[Firestore] Failed to persist preferences to cloud:', err);
-    }
+    });
   }
   return updated;
 }
@@ -382,11 +388,12 @@ export function subscribeToScheduleBlocks(userId: string, onUpdate: (blocks: Sch
 export async function saveScheduleBlocks(userId: string, blocks: ScheduleBlock[]): Promise<void> {
   setLocalStore(userId, 'planningBlocks', blocks);
 
-  if (db && isFirebaseConfigured) {
+  const firestore = db;
+  if (firestore && isFirebaseConfigured) {
     try {
-      for (const block of blocks) {
-        await setDoc(doc(db, `users/${userId}/planningBlocks/${block.id}`), block);
-      }
+      await Promise.all(
+        blocks.map((block) => setDoc(doc(firestore, `users/${userId}/planningBlocks/${block.id}`), block))
+      );
     } catch (err) {
       console.warn('[Firestore] Cloud schedule blocks save failed:', err);
     }
@@ -398,12 +405,13 @@ export async function clearScheduleBlocksForRange(userId: string, startDay: stri
   const preserved = current.filter((b) => b.isLocked || b.day < startDay || b.day > endDay);
   setLocalStore(userId, 'planningBlocks', preserved);
 
-  if (db && isFirebaseConfigured) {
+  const firestore = db;
+  if (firestore && isFirebaseConfigured) {
     try {
       const blocksToDelete = current.filter((b) => !b.isLocked && b.day >= startDay && b.day <= endDay);
-      for (const block of blocksToDelete) {
-        await deleteDoc(doc(db, `users/${userId}/planningBlocks/${block.id}`));
-      }
+      await Promise.all(
+        blocksToDelete.map((block) => deleteDoc(doc(firestore, `users/${userId}/planningBlocks/${block.id}`)))
+      );
     } catch (err) {
       console.warn('[Firestore] Cloud schedule blocks clear failed:', err);
     }

@@ -12,6 +12,7 @@ import {
   RefreshCw,
   X
 } from 'lucide-react';
+import { PWAInstallButton } from '../pwa/PWAInstallButton.tsx';
 
 interface LandingPageProps {
   onOpenAuth: (mode: 'signin' | 'signup') => void;
@@ -39,6 +40,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           </nav>
 
           <div className="flex items-center gap-3">
+            <PWAInstallButton variant="navbar" />
             <button
               onClick={() => onOpenAuth('signin')}
               className="px-4 py-2 text-xs font-semibold text-[#202C39] hover:text-black transition-colors"
@@ -85,6 +87,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onOpenAuth }) => {
           >
             Access Existing Workspace
           </button>
+          <PWAInstallButton variant="landing" />
         </div>
 
         {/* Real Schedule Mockup Card */}

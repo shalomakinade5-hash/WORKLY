@@ -36,7 +36,7 @@ app.get('/api/assistant/status', (_req: Request, res: Response) => {
   const isAvailable = Boolean(aiClient);
   res.json({
     hasGeminiKey: isAvailable,
-    model: isAvailable ? 'gemini-3.8-flash' : 'deterministic-planner',
+    model: isAvailable ? 'gemini-3.1-flash-lite' : 'deterministic-planner',
     mode: isAvailable ? 'gemini_ai' : 'deterministic'
   });
 });
@@ -49,7 +49,7 @@ app.post('/api/assistant/chat', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Invalid messages format.' });
   }
 
-  // If Gemini is active, use gemini-3.8-flash with Workly system instructions
+  // If Gemini is active, use gemini-3.1-flash-lite with Workly system instructions
   if (aiClient) {
     try {
       const systemInstruction = `You are Workly AI, an intelligent, calm, and realistic productivity assistant built into the Workly platform.
@@ -82,11 +82,11 @@ ACTION_PROPOSAL_END
       }));
 
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Gemini API response timeout')), 4000)
+        setTimeout(() => reject(new Error('Gemini API response timeout')), 12000)
       );
 
       const generatePromise = aiClient.models.generateContent({
-        model: 'gemini-3.8-flash',
+        model: 'gemini-3.1-flash-lite',
         contents: formattedContents,
         config: {
           systemInstruction,
@@ -102,8 +102,8 @@ ACTION_PROPOSAL_END
         provider: 'gemini'
       });
     } catch (err: any) {
-      console.warn('[Server] Gemini call error or timeout:', err.message);
-      // Fall through to deterministic response on API failure or timeout
+      console.warn('[Server] Gemini call error or timeout:', err?.message || err);
+      // Gracefully fall through to deterministic response on API error or timeout
     }
   }
 

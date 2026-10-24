@@ -227,8 +227,8 @@ export function runPlannerIntegrityTests(): TestResult[] {
   try {
     // Fill the day beyond 8 hours (480 mins)
     const giantTasks: Task[] = [
-      { id: 'g1', userId: 'test', title: 'Deep Work 1', status: 'inbox', priority: 'high', estimatedDuration: 240, subtasks: [], createdAt: '', updatedAt: '' },
-      { id: 'g2', userId: 'test', title: 'Deep Work 2', status: 'inbox', priority: 'high', estimatedDuration: 240, subtasks: [], createdAt: '', updatedAt: '' },
+      { id: 'g1', userId: 'test', title: 'Deep Work 1', status: 'inbox', priority: 'high', estimatedDuration: 240, dueDate: mondayStr, subtasks: [], createdAt: '', updatedAt: '' },
+      { id: 'g2', userId: 'test', title: 'Deep Work 2', status: 'inbox', priority: 'high', estimatedDuration: 240, dueDate: mondayStr, subtasks: [], createdAt: '', updatedAt: '' },
       { id: 'g3', userId: 'test', title: 'Deep Work 3', status: 'inbox', priority: 'high', estimatedDuration: 180, dueDate: mondayStr, subtasks: [], createdAt: '', updatedAt: '' }
     ];
 

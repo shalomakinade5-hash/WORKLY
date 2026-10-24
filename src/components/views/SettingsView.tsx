@@ -6,23 +6,20 @@ import {
   Globe,
   Shield,
   Trash2,
-  Key,
   CheckCircle2,
   AlertTriangle,
   LogOut,
   Layers,
   Save,
-  RotateCcw
+  Smartphone
 } from 'lucide-react';
 import type { UserPreferences } from '../../types/index.ts';
 import type { WorklyUser } from '../../services/auth.ts';
 import { deleteCurrentAccount } from '../../services/auth.ts';
 import {
-  isFirebaseConfigured,
-  activeFirebaseConfig,
-  saveStoredFirebaseConfig,
-  clearStoredFirebaseConfig
+  isFirebaseConfigured
 } from '../../services/firebase.ts';
+import { PWAInstallButton } from '../pwa/PWAInstallButton.tsx';
 
 interface SettingsViewProps {
   user: WorklyUser;
@@ -48,11 +45,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [bufferMinutes, setBufferMinutes] = useState(preferences.bufferMinutes);
   const [defaultCurrency, setDefaultCurrency] = useState(preferences.defaultCurrency);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Firebase Config Editing
-  const [customApiKey, setCustomApiKey] = useState(activeFirebaseConfig?.apiKey || '');
-  const [customProjectId, setCustomProjectId] = useState(activeFirebaseConfig?.projectId || '');
-  const [customAppId, setCustomAppId] = useState(activeFirebaseConfig?.appId || '');
 
   // Account Deletion State
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -98,29 +90,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       onShowToast(`Failed to save preferences: ${err.message}`, 'error');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleUpdateFirebase = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customApiKey.trim() || !customProjectId.trim()) {
-      onShowToast('API Key and Project ID are required.', 'error');
-      return;
-    }
-    saveStoredFirebaseConfig({
-      apiKey: customApiKey.trim(),
-      projectId: customProjectId.trim(),
-      authDomain: `${customProjectId.trim()}.firebaseapp.com`,
-      storageBucket: `${customProjectId.trim()}.appspot.com`,
-      messagingSenderId: '',
-      appId: customAppId.trim()
-    });
-    onShowToast('New Firebase Project config applied! Reloading...', 'success');
-  };
-
-  const handleResetFirebase = () => {
-    if (confirm('Clear custom Firebase configuration and reset to environment defaults?')) {
-      clearStoredFirebaseConfig();
     }
   };
 
@@ -296,18 +265,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </form>
       </div>
 
-      {/* 2. Firebase Backend Project Configuration */}
+      {/* 2. Cloud Database & Security Status */}
       <div className="p-6 rounded-2xl bg-[#FFFFFF] border border-[#DCE1E5] shadow-xs">
         <div className="flex items-center justify-between pb-4 border-b border-[#DCE1E5]">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#FCF7EE] text-[#D5A34B] flex items-center justify-center">
-              <Key className="w-5 h-5 text-[#B8852B]" />
+              <Shield className="w-5 h-5 text-[#B8852B]" />
             </div>
             <div>
-              <h3 className="font-bold text-base text-[#202C39]">New Firebase Backend Project</h3>
+              <h3 className="font-bold text-base text-[#202C39]">Cloud Data & Security</h3>
               <p className="text-xs text-[#8293A5]">
                 {isFirebaseConfigured
-                  ? `Connected to: ${activeFirebaseConfig?.projectId}`
+                  ? 'Connected to Workly Cloud Backend with live Firestore persistence'
                   : 'Operating in Local Storage fallback mode'}
               </p>
             </div>
@@ -319,63 +288,69 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-              Setup Required
+              Local Mode
             </span>
           )}
         </div>
 
-        <p className="text-xs text-[#8293A5] mt-3 leading-relaxed">
-          As required by the master prompt, Workly is designed for a brand-new Firebase project. You can supply
-          your new Firebase credentials below or via <code>.env</code>. Security rules are deployed via <code>firestore.rules</code>.
-        </p>
-
-        <form onSubmit={handleUpdateFirebase} className="mt-4 space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#8293A5] mb-1">
-                Firebase Web API Key
-              </label>
-              <input
-                type="text"
-                placeholder="AIzaSy..."
-                value={customApiKey}
-                onChange={(e) => setCustomApiKey(e.target.value)}
-                className="w-full px-3 py-2 bg-[#F7F7F4] border border-[#DCE1E5] rounded-lg text-xs font-mono text-[#202C39] focus:ring-2 focus:ring-[#202C39]"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-[#8293A5] mb-1">
-                Firebase Project ID
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. workly-production"
-                value={customProjectId}
-                onChange={(e) => setCustomProjectId(e.target.value)}
-                className="w-full px-3 py-2 bg-[#F7F7F4] border border-[#DCE1E5] rounded-lg text-xs font-mono text-[#202C39] focus:ring-2 focus:ring-[#202C39]"
-              />
-            </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="p-3.5 bg-[#F7F7F4] rounded-xl border border-[#DCE1E5]">
+            <p className="font-bold text-[#202C39]">User-Isolated Security Rules</p>
+            <p className="text-[#8293A5] mt-1 leading-relaxed">
+              Every document is protected by server-side Firebase rules restricting read/write access solely to your authenticated user account.
+            </p>
           </div>
-
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={handleResetFirebase}
-              className="text-xs text-[#8293A5] hover:text-[#202C39] flex items-center gap-1"
-            >
-              <RotateCcw className="w-3 h-3" /> Reset to defaults
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-[#202C39] hover:bg-[#151E28] text-white rounded-lg text-xs font-semibold transition-colors"
-            >
-              Update Firebase Credentials
-            </button>
+          <div className="p-3.5 bg-[#F7F7F4] rounded-xl border border-[#DCE1E5]">
+            <p className="font-bold text-[#202C39]">Private Real-Time Sync</p>
+            <p className="text-[#8293A5] mt-1 leading-relaxed">
+              Automatic background syncing across devices, offline caching, and instant recovery ensure you never lose your schedule or commitments.
+            </p>
           </div>
-        </form>
+        </div>
       </div>
 
-      {/* 3. Account Actions & Deletion */}
+      {/* 3. Progressive Web App (PWA) Status & Install */}
+      <div className="p-6 rounded-2xl bg-[#FFFFFF] border border-[#DCE1E5] shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#DCE1E5] gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#202C39] text-[#D5A34B] flex items-center justify-center shrink-0">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-[#202C39]">Progressive Web App (PWA)</h3>
+              <p className="text-xs text-[#8293A5]">
+                Install Workly to your home screen or desktop dock for an app experience with fast launch and offline shell caching.
+              </p>
+            </div>
+          </div>
+          <div className="shrink-0">
+            <PWAInstallButton variant="settings" />
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="p-3.5 bg-[#F7F7F4] rounded-xl border border-[#DCE1E5]">
+            <p className="font-bold text-[#202C39]">Fast Static Precache</p>
+            <p className="text-[#8293A5] mt-1 leading-relaxed">
+              Essential UI shells and fonts are precached via Service Worker for rapid launching.
+            </p>
+          </div>
+          <div className="p-3.5 bg-[#F7F7F4] rounded-xl border border-[#DCE1E5]">
+            <p className="font-bold text-[#202C39]">Secure Isolation</p>
+            <p className="text-[#8293A5] mt-1 leading-relaxed">
+              Personal credentials and tokens are never written to unauthenticated public caches.
+            </p>
+          </div>
+          <div className="p-3.5 bg-[#F7F7F4] rounded-xl border border-[#DCE1E5]">
+            <p className="font-bold text-[#202C39]">Seamless Background Updates</p>
+            <p className="text-[#8293A5] mt-1 leading-relaxed">
+              New versions download quietly and notify you with a polite prompt so your active work is never interrupted.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Account Actions & Deletion */}
       <div className="p-6 rounded-2xl bg-[#FFFFFF] border border-[#DCE1E5] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h4 className="font-bold text-sm text-[#202C39]">Sign Out & Session</h4>
