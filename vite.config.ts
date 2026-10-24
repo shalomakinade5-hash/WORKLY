@@ -31,6 +31,12 @@ export default defineConfig(() => {
               purpose: 'any',
             },
             {
+              src: '/pwa-maskable-192x192.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+            {
               src: '/pwa-512x512.png',
               sizes: '512x512',
               type: 'image/png',
@@ -87,7 +93,7 @@ export default defineConfig(() => {
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve((import.meta as any).dirname || '.', '.'),
       },
     },
     server: {

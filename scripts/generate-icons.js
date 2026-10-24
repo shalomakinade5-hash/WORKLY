@@ -215,9 +215,13 @@ const icon512 = renderWorklyIcon(512, false);
 fs.writeFileSync(path.join(publicDir, 'pwa-512x512.png'), icon512);
 console.log('Created pwa-512x512.png');
 
-const iconMaskable = renderWorklyIcon(512, true);
-fs.writeFileSync(path.join(publicDir, 'pwa-maskable-512x512.png'), iconMaskable);
+const iconMaskable512 = renderWorklyIcon(512, true);
+fs.writeFileSync(path.join(publicDir, 'pwa-maskable-512x512.png'), iconMaskable512);
 console.log('Created pwa-maskable-512x512.png');
+
+const iconMaskable192 = renderWorklyIcon(192, true);
+fs.writeFileSync(path.join(publicDir, 'pwa-maskable-192x192.png'), iconMaskable192);
+console.log('Created pwa-maskable-192x192.png');
 
 const appleTouchIcon = renderWorklyIcon(180, false);
 fs.writeFileSync(path.join(publicDir, 'apple-touch-icon.png'), appleTouchIcon);

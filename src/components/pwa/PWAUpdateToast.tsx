@@ -1,24 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { RefreshCw, Sparkles, X } from 'lucide-react';
-import { useRegisterSW } from 'virtual:pwa-register/react';
+import { applyServiceWorkerUpdate } from '../../services/pwa.ts';
 
 export const PWAUpdateToast: React.FC = () => {
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    onRegistered(r) {
-      if (r) {
-        // Check for updates periodically (e.g. every hour)
-        setInterval(() => {
-          r.update().catch(() => {});
-        }, 60 * 60 * 1000);
-      }
-    },
-    onRegisterError(error) {
-      console.warn('Workly Service Worker registration error:', error);
-    },
-  });
+  const [needRefresh, setNeedRefresh] = useState(false);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setNeedRefresh(true);
+    };
+
+    window.addEventListener('workly:sw-update-available', handleUpdate);
+
+    return () => {
+      window.removeEventListener('workly:sw-update-available', handleUpdate);
+    };
+  }, []);
 
   if (!needRefresh) return null;
 
@@ -52,7 +49,9 @@ export const PWAUpdateToast: React.FC = () => {
 
       <div className="mt-3.5 flex items-center gap-2.5">
         <button
-          onClick={() => updateServiceWorker(true)}
+          onClick={async () => {
+            await applyServiceWorkerUpdate();
+          }}
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#D5A34B] hover:bg-[#c4923b] text-[#202C39] font-bold text-xs shadow-xs transition-colors cursor-pointer"
         >
           <RefreshCw className="w-3.5 h-3.5" />
