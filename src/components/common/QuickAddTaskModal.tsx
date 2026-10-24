@@ -49,7 +49,7 @@ export const QuickAddTaskModal: React.FC<QuickAddTaskModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#202C39]/60 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="bg-[#FFFFFF] border border-[#DCE1E5] rounded-xl max-w-lg w-full p-6 shadow-xl relative">
+      <div className="bg-[#FFFFFF] border border-[#DCE1E5] rounded-xl max-w-lg w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-[#DCE1E5]">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#D5A34B]" />

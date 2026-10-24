@@ -65,7 +65,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#202C39]/70 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-[#FFFFFF] border border-[#DCE1E5] rounded-2xl max-w-lg w-full p-7 shadow-2xl relative">
+      <div className="bg-[#FFFFFF] border border-[#DCE1E5] rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl relative max-h-[90vh] overflow-y-auto">
         {step === 1 ? (
           <div>
             <div className="w-10 h-10 rounded-xl bg-[#202C39] flex items-center justify-center text-[#D5A34B] font-bold text-lg mb-4">
