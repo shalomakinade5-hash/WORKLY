@@ -1,6 +1,8 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -75,14 +77,48 @@ export async function loginWithEmail(email: string, password: string): Promise<U
   return credential.user;
 }
 
+export async function checkRedirectResult(): Promise<User | null> {
+  if (!auth || !isFirebaseConfigured) return null;
+  try {
+    const result = await getRedirectResult(auth);
+    return result ? result.user : null;
+  } catch (err: any) {
+    console.warn('[Firebase Auth] Redirect result notice:', err?.message || err);
+    throw err;
+  }
+}
+
 export async function loginWithGoogle(): Promise<User> {
   if (!auth || !isFirebaseConfigured) {
     throw new Error('Firebase Authentication is not configured. Please add your new Firebase project credentials.');
   }
   const provider = new GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
   provider.setCustomParameters({ prompt: 'select_account' });
-  const result = await signInWithPopup(auth, provider);
-  return result.user;
+
+  // Detect standalone PWA mode or mobile WebViews where browser popups are restricted
+  const isStandalone = typeof window !== 'undefined' && (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true
+  );
+
+  if (isStandalone) {
+    await signInWithRedirect(auth, provider);
+    return new Promise(() => {}); // Execution transfers to Google login page
+  }
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
+  } catch (err: any) {
+    // If popup is blocked by the browser, fall back to redirect
+    if (err?.code === 'auth/popup-blocked' || err?.code === 'auth/cancelled-popup-request') {
+      await signInWithRedirect(auth, provider);
+      return new Promise(() => {}); // Execution transfers to Google login page
+    }
+    throw err;
+  }
 }
 
 export async function resetPassword(email: string): Promise<void> {

@@ -25,7 +25,7 @@ import { OfflineIndicator } from './components/pwa/OfflineIndicator.tsx';
 import { PWAUpdateToast } from './components/pwa/PWAUpdateToast.tsx';
 
 // Services
-import { subscribeToAuth, logOut, type WorklyUser } from './services/auth.ts';
+import { subscribeToAuth, logOut, checkRedirectResult, formatAuthError, type WorklyUser } from './services/auth.ts';
 import { isFirebaseConfigured } from './services/firebase.ts';
 import {
   getUserPreferences,
@@ -141,6 +141,52 @@ export default function App() {
       setUser(authenticatedUser);
       setIsAuthLoading(false);
     });
+
+    // Check Google Auth redirect result if returning from a redirect sign-in flow
+    checkRedirectResult()
+      .then((redirectUser) => {
+        if (redirectUser) {
+          showToast(`Welcome to Workly, ${redirectUser.displayName || 'User'}!`, 'success');
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.history.replaceState({}, '', '/');
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn('[Google Auth] Redirect sign-in error:', err?.message || err);
+        showToast(formatAuthError(err), 'error');
+        setAuthModalOpen(true);
+      });
+
+    // Check URL route, hash, or search params to automatically open Sign-Up or Sign-In
+    if (typeof window !== 'undefined') {
+      const pathname = window.location.pathname.toLowerCase();
+      const hash = window.location.hash.toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      const authParam = (params.get('auth') || params.get('mode'))?.toLowerCase();
+
+      if (
+        pathname === '/signup' ||
+        pathname === '/register' ||
+        hash === '#signup' ||
+        hash === '#register' ||
+        authParam === 'signup' ||
+        authParam === 'register'
+      ) {
+        setAuthModalMode('signup');
+        setAuthModalOpen(true);
+      } else if (
+        pathname === '/signin' ||
+        pathname === '/login' ||
+        hash === '#signin' ||
+        hash === '#login' ||
+        authParam === 'signin' ||
+        authParam === 'login'
+      ) {
+        setAuthModalMode('signin');
+        setAuthModalOpen(true);
+      }
+    }
 
     return () => unsubscribe();
   }, []);
@@ -268,10 +314,18 @@ export default function App() {
         />
         <AuthModal
           isOpen={authModalOpen}
-          onClose={() => setAuthModalOpen(false)}
+          onClose={() => {
+            setAuthModalOpen(false);
+            if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+              window.history.replaceState({}, '', '/');
+            }
+          }}
           initialMode={authModalMode}
           onSuccess={() => {
             setAuthModalOpen(false);
+            if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+              window.history.replaceState({}, '', '/');
+            }
             showToast('Welcome to Workly!', 'success');
           }}
         />
