@@ -82,6 +82,7 @@ export default function App() {
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
   const [activeTaskForFocus, setActiveTaskForFocus] = useState<Task | null>(null);
+  const [assistantInitialPrompt, setAssistantInitialPrompt] = useState<string | undefined>();
 
   // Network & Toasts
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
@@ -385,7 +386,10 @@ export default function App() {
           onStartFocus={handleStartFocusForTask}
           onSelectTaskToEdit={setSelectedTaskForEdit}
           onShowToast={showToast}
-          onOpenAssistant={() => setCurrentView('assistant')}
+          onOpenAssistant={(prompt) => {
+            setAssistantInitialPrompt(prompt);
+            setCurrentView('assistant');
+          }}
         />
       )}
 
@@ -394,7 +398,10 @@ export default function App() {
           tasks={tasks}
           goals={goals}
           blocks={scheduleBlocks}
+          fixedCommitments={fixedCommitments}
           preferences={preferences}
+          initialPrompt={assistantInitialPrompt}
+          onClearInitialPrompt={() => setAssistantInitialPrompt(undefined)}
           onSaveTask={handleSaveTask}
           onUpdateBlocks={handleUpdateScheduleBlocks}
           onShowToast={showToast}

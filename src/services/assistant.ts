@@ -1,4 +1,4 @@
-import type { Task, Goal, ScheduleBlock, UserPreferences } from '../types/index.ts';
+import type { Task, Goal, ScheduleBlock, FixedCommitment, UserPreferences } from '../types/index.ts';
 
 export interface AssistantActionProposal {
   id: string;
@@ -23,6 +23,7 @@ export interface AssistantContext {
   tasks: Task[];
   goals: Goal[];
   todayBlocks: ScheduleBlock[];
+  fixedCommitments?: FixedCommitment[];
   preferences: UserPreferences;
 }
 
@@ -100,37 +101,87 @@ export function generateDeterministicAssistantResponse(
   const overdueTasks = pendingTasks.filter((t) => t.dueDate && t.dueDate < todayStr);
   const todayTasks = pendingTasks.filter((t) => t.dueDate === todayStr || t.scheduledDay === todayStr);
 
-  // 1. "Help me plan my day" / Daily schedule
-  if (prompt.includes('plan my day') || prompt.includes('daily schedule') || prompt.includes('plan today')) {
+  // 1. "Suggest the task for the day" / "Plan my day" / Daily task recommendations
+  const isDailySuggestion =
+    prompt.includes('suggest') ||
+    prompt.includes('plan my day') ||
+    prompt.includes('daily schedule') ||
+    prompt.includes('plan today') ||
+    prompt.includes('what to do today') ||
+    prompt.includes('task for the day') ||
+    prompt.includes('tasks for today') ||
+    prompt.includes('what should i work on') ||
+    prompt.includes('recommend tasks');
+
+  if (isDailySuggestion) {
     if (pendingTasks.length === 0) {
       return {
-        content: `Your inbox is currently empty! You have no pending tasks to schedule today.\n\nWould you like to capture a new task or review your long-term goals?`
+        content: `### 🎯 Daily Focus Briefing\n\nYour inbox is currently clear of pending tasks!\n\n**Strategic Recommendation:**\nTo make meaningful progress today, pick one of your strategic goals or capture 1–2 high-impact tasks (e.g., "Draft product launch announcement" or "Review weekly metrics").\n\nWould you like me to create a focused task for you right now?`,
+        proposal: {
+          id: `prop_create_${Date.now()}`,
+          type: 'create_task',
+          title: 'Capture High-Impact Focus Task',
+          description: 'Adds a 45m high-priority task for today.',
+          payload: {
+            title: 'Deep Work: High-Impact Project Milestone',
+            priority: 'high',
+            estimatedDuration: 45,
+            dueDate: todayStr,
+            status: 'inbox'
+          },
+          applied: false
+        }
       };
     }
 
-    const topTasks = [...pendingTasks]
-      .sort((a, b) => {
-        const pOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
-        return (pOrder[b.priority] || 1) - (pOrder[a.priority] || 1);
-      })
-      .slice(0, 3);
+    // Sort intelligently: Overdue first, then Urgent/High, then goal-aligned
+    const scoredTasks = [...pendingTasks].sort((a, b) => {
+      // 1. Overdue penalty
+      const aOverdue = Boolean(a.dueDate && a.dueDate < todayStr);
+      const bOverdue = Boolean(b.dueDate && b.dueDate < todayStr);
+      if (aOverdue && !bOverdue) return -1;
+      if (!aOverdue && bOverdue) return 1;
 
-    const taskLines = topTasks
-      .map((t, idx) => `${idx + 1}. **${t.title}** (${t.estimatedDuration}m, ${t.priority} priority)`)
-      .join('\n');
+      // 2. Goal alignment
+      const aGoal = Boolean(a.goalId);
+      const bGoal = Boolean(b.goalId);
+      if (aGoal && !bGoal) return -1;
+      if (!aGoal && bGoal) return 1;
 
-    const totalMins = topTasks.reduce((acc, t) => acc + (t.estimatedDuration || 45), 0);
+      // 3. Priority
+      const pOrder: Record<string, number> = { urgent: 4, high: 3, medium: 2, low: 1 };
+      return (pOrder[b.priority] || 1) - (pOrder[a.priority] || 1);
+    });
+
+    const topPriorityTask = scoredTasks[0];
+    const secondaryTasks = scoredTasks.slice(1, 3);
+    const deferredTasks = scoredTasks.slice(3);
+    const allSelectedTasks = [topPriorityTask, ...secondaryTasks];
+
+    const currentHour = new Date().getHours();
     const startHour = Number(ctx.preferences.workingHoursStart.split(':')[0]) || 9;
+    const endHour = Number(ctx.preferences.workingHoursEnd.split(':')[0]) || 18;
+    const effectiveStart = Math.max(startHour, currentHour);
+    const hoursLeft = Math.max(1, endHour - effectiveStart);
+    const totalScheduledMins = allSelectedTasks.reduce((acc, t) => acc + (t.estimatedDuration || 45), 0);
+
+    const secondaryLines = secondaryTasks.length > 0
+      ? secondaryTasks.map((t, idx) => `• **Secondary #${idx + 1}:** **${t.title}** (${t.estimatedDuration}m, ${t.priority} priority)`).join('\n')
+      : '• *No secondary tasks required — keep remaining bandwidth open.*';
+
+    const deferredNote = deferredTasks.length > 0
+      ? `\n\n⏸️ **Intentional Deferral:** I recommend leaving **${deferredTasks.length} lower-priority task(s)** (like "${deferredTasks[0].title}") for tomorrow. Protecting your attention from task switching is the fastest way to get more done.`
+      : '';
 
     return {
-      content: `Here is a realistic plan for today based on your **${ctx.preferences.workingHoursStart} – ${ctx.preferences.workingHoursEnd}** working hours:\n\n${taskLines}\n\n• **Total scheduled focus:** ${totalMins} minutes.\n• **Buffer & breaks:** 15m included between blocks to keep your day calm and intentional.\n\nReview the proposed schedule block below and click **Apply Proposed Action** to add them to Today's agenda.`,
+      content: `### 🎯 Today's Strategic Focus Plan\n\n**Capacity Check:** You have ~**${hoursLeft} hours** of working time remaining today (${ctx.preferences.workingHoursStart} – ${ctx.preferences.workingHoursEnd}). Total proposed focus: **${totalScheduledMins} minutes** with buffers.\n\n👑 **#1 Must-Win Deliverable:**\n👉 **${topPriorityTask.title}** (${topPriorityTask.estimatedDuration}m, **${topPriorityTask.priority.toUpperCase()}** priority)\n*Why:* ${topPriorityTask.dueDate && topPriorityTask.dueDate < todayStr ? 'This task is overdue and resolving it immediately clears cognitive drag.' : 'This is your highest-leverage task. Completing it will define today as a win.'}\n\n⚡ **Supporting Tasks:**\n${secondaryLines}${deferredNote}\n\nClick **Apply Proposed Action** below to schedule these tasks directly into Today's timetable.`,
       proposal: {
         id: `prop_plan_${Date.now()}`,
         type: 'schedule_day',
-        title: `Schedule ${topTasks.length} Priority Tasks for Today`,
-        description: `Places ${topTasks.map((t) => `"${t.title}"`).join(', ')} into open slots starting from ${startHour}:00 with 15m buffers.`,
+        title: `Schedule ${allSelectedTasks.length} Recommended Tasks for Today`,
+        description: `Places "${topPriorityTask.title}" and ${secondaryTasks.length} supporting task(s) into today's agenda with 15m buffers.`,
         payload: {
-          tasks: topTasks,
+          tasks: allSelectedTasks,
           day: todayStr
         },
         applied: false
@@ -313,6 +364,7 @@ export async function sendChatMessage(
         messages,
         context: {
           today: ctx.today,
+          currentTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
           workingHoursStart: ctx.preferences.workingHoursStart,
           workingHoursEnd: ctx.preferences.workingHoursEnd,
           tasks: ctx.tasks.map((t) => ({
@@ -321,13 +373,20 @@ export async function sendChatMessage(
             priority: t.priority,
             estimatedDuration: t.estimatedDuration,
             dueDate: t.dueDate,
-            status: t.status
+            status: t.status,
+            project: t.project
           })),
           goals: ctx.goals.map((g) => ({ id: g.id, title: g.title, category: g.category })),
           todayBlocks: ctx.todayBlocks.map((b) => ({
             start: b.start,
             end: b.end,
-            taskTitle: b.taskTitle
+            taskTitle: b.taskTitle,
+            completed: b.completed
+          })),
+          fixedCommitments: (ctx.fixedCommitments || []).map((c) => ({
+            start: c.start,
+            end: c.end,
+            title: c.title
           }))
         }
       })

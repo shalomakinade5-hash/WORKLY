@@ -16,7 +16,7 @@ import {
   HelpCircle,
   Plus
 } from 'lucide-react';
-import type { Task, Goal, ScheduleBlock, UserPreferences } from '../../types/index.ts';
+import type { Task, Goal, ScheduleBlock, FixedCommitment, UserPreferences } from '../../types/index.ts';
 import {
   sendChatMessage,
   checkAssistantStatus,
@@ -29,10 +29,13 @@ interface AssistantViewProps {
   tasks: Task[];
   goals: Goal[];
   blocks: ScheduleBlock[];
+  fixedCommitments?: FixedCommitment[];
   preferences: UserPreferences;
   onSaveTask: (taskData: Partial<Task>) => Promise<any>;
   onUpdateBlocks: (blocks: ScheduleBlock[]) => Promise<void>;
   onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  initialPrompt?: string;
+  onClearInitialPrompt?: () => void;
 }
 
 const STORAGE_KEY = 'workly_ai_chat_history';
@@ -41,10 +44,13 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
   tasks,
   goals,
   blocks,
+  fixedCommitments = [],
   preferences,
   onSaveTask,
   onUpdateBlocks,
-  onShowToast
+  onShowToast,
+  initialPrompt,
+  onClearInitialPrompt
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -89,10 +95,10 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
   }, [messages, isLoading]);
 
   const suggestedPrompts = [
-    'Help me plan my day.',
-    'What should I prioritize?',
-    'Help me catch up on overdue tasks.',
-    'Break my goal into smaller steps.',
+    '🎯 Suggest tasks for today',
+    'What should I prioritize right now?',
+    'Triage my overdue tasks',
+    'Break my active goal into today\'s steps',
     'I have too much to do. Help me start.',
     'Review my week.'
   ];
@@ -119,6 +125,7 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
         tasks,
         goals,
         todayBlocks,
+        fixedCommitments,
         preferences
       });
 
@@ -138,6 +145,14 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Auto-send initial prompt if triggered from another view (e.g., Today view)
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.trim()) {
+      handleSendMessage(initialPrompt);
+      onClearInitialPrompt?.();
+    }
+  }, [initialPrompt]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -177,7 +192,41 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
         const proposedTasks = proposal.payload.tasks as Task[];
         const day = proposal.payload.day as string;
         const startHour = Number(preferences.workingHoursStart.split(':')[0]) || 9;
-        let pointerHour = startHour;
+        const currentHour = new Date().getHours();
+
+        // Calculate a sensible starting hour that does not overwrite already passed hours if scheduling today
+        let pointerHour = day === todayStr ? Math.max(startHour, currentHour) : startHour;
+
+        // Preserve completed blocks or past blocks from today, plus all other days
+        const existingCompletedOrOtherDays = blocks.filter((b) => b.day !== day || b.completed);
+
+        // Advance pointer beyond any existing blocks on this day
+        const existingToday = blocks.filter((b) => b.day === day);
+        for (const eb of existingToday) {
+          try {
+            const ebEnd = new Date(eb.end).getHours();
+            if (ebEnd > pointerHour) {
+              pointerHour = ebEnd;
+            }
+          } catch {
+            // ignore date parse issues
+          }
+        }
+
+        // Also respect fixed commitments if any on this day
+        if (fixedCommitments && fixedCommitments.length > 0) {
+          const dayCommitments = fixedCommitments.filter((fc) => fc.day === day);
+          for (const fc of dayCommitments) {
+            try {
+              const fcEnd = new Date(fc.end).getHours();
+              if (fcEnd > pointerHour) {
+                pointerHour = Math.max(pointerHour, fcEnd);
+              }
+            } catch {
+              // ignore parse errors
+            }
+          }
+        }
 
         const newBlocks: ScheduleBlock[] = [];
         for (const task of proposedTasks) {
@@ -187,7 +236,7 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
           const eIso = `${day}T${String(endHour).padStart(2, '0')}:00:00.000Z`;
 
           newBlocks.push({
-            id: `block_ai_${task.id}_${Date.now()}`,
+            id: `block_ai_${task.id}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
             taskId: task.id,
             taskTitle: task.title,
             start: sIso,
@@ -203,8 +252,7 @@ export const AssistantView: React.FC<AssistantViewProps> = ({
           pointerHour = endHour;
         }
 
-        const existingOtherDays = blocks.filter((b) => b.day !== day);
-        await onUpdateBlocks([...existingOtherDays, ...newBlocks]);
+        await onUpdateBlocks([...existingCompletedOrOtherDays, ...newBlocks]);
         onShowToast(`Scheduled ${proposedTasks.length} tasks to Today's agenda!`, 'success');
       }
 

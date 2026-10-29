@@ -33,7 +33,7 @@ interface TodayViewProps {
   onStartFocus: (task: Task) => void;
   onSelectTaskToEdit: (task: Task) => void;
   onShowToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
-  onOpenAssistant?: () => void;
+  onOpenAssistant?: (prompt?: string) => void;
 }
 
 export const TodayView: React.FC<TodayViewProps> = ({
@@ -231,27 +231,41 @@ export const TodayView: React.FC<TodayViewProps> = ({
 
       {/* Workly AI Entry Callout */}
       {onOpenAssistant && (
-        <div className="p-4 rounded-2xl bg-[#FFFFFF] border border-[#DCE1E5] shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-[#FFFFFF] border border-[#DCE1E5] shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-[#202C39] text-[#D5A34B] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-[#202C39] text-[#D5A34B] flex items-center justify-center shrink-0 shadow-xs">
               <Sparkles className="w-4 h-4 text-[#D5A34B]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-xs text-[#202C39]">Workly AI Assistant</span>
-                <span className="text-[10px] text-[#8293A5]">• Intelligent Planning</span>
+                <span className="font-bold text-xs text-[#202C39]">Workly AI Strategist</span>
+                <span className="text-[10px] text-[#D5A34B] font-semibold bg-[#D5A34B]/10 px-2 py-0.5 rounded-full">
+                  Capacity & Priority Engine
+                </span>
               </div>
               <p className="text-[11px] text-[#8293A5] mt-0.5">
-                Need help deciding what to prioritize, planning your hours, or breaking down a goal?
+                Calculate remaining capacity, filter must-win tasks, and schedule realistic focus blocks.
               </p>
             </div>
           </div>
-          <button
-            onClick={onOpenAssistant}
-            className="px-3.5 py-1.5 bg-[#F7F7F4] hover:bg-[#202C39] text-[#202C39] hover:text-[#F7F7F4] border border-[#DCE1E5] rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer self-end sm:self-auto"
-          >
-            Ask Workly AI <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center gap-2 self-end md:self-auto shrink-0 flex-wrap">
+            <button
+              onClick={() =>
+                onOpenAssistant?.(
+                  'Suggest the best tasks for me to focus on today based on my capacity, deadlines, and active goals.'
+                )
+              }
+              className="px-3.5 py-1.5 bg-[#202C39] text-[#F7F7F4] hover:bg-[#151E28] rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#D5A34B]" /> Suggest Tasks for Today
+            </button>
+            <button
+              onClick={() => onOpenAssistant?.()}
+              className="px-3 py-1.5 bg-[#F7F7F4] hover:bg-[#EAECEF] text-[#202C39] border border-[#DCE1E5] rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+            >
+              Ask AI <ArrowRight className="w-3 h-3 text-[#8293A5]" />
+            </button>
+          </div>
         </div>
       )}
 
